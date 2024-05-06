@@ -1,6 +1,6 @@
 # Provider Configuration
 provider "aws" {
-  region = "ap-south-1"
+  region = var.region
 }
 
 # VPC Creation
@@ -15,7 +15,7 @@ resource "aws_security_group" "windows_sg" {
   depends_on = [aws_vpc.example_vpc]
   vpc_id     = aws_vpc.example_vpc.id
 
-  # Allow RDP (Port 3389) and WinRM (Port 5985) from anywhere
+
   ingress {
     from_port   = 3389
     to_port     = 3389
@@ -38,9 +38,10 @@ resource "aws_security_group" "windows_sg" {
 }
 
 resource "aws_instance" "example_instance" {
+
   depends_on                  = [aws_security_group.windows_sg, aws_subnet.example_subnet, aws_internet_gateway.example_igw, aws_route_table.example_route_table]
-  ami                         = "ami-07ef4004db979fcd4"
-  instance_type               = "t2.medium"
+  ami                         = var.ami
+  instance_type               = var.instance_type
   key_name                    = "windowssm"
   subnet_id                   = aws_subnet.example_subnet.id
   associate_public_ip_address = true
@@ -54,12 +55,8 @@ $destination = "C:\users\administrator\downloads\test"
 Invoke-WebRequest -Uri $url -OutFile $outputPath
 Expand-Archive -Path $outputPath -DestinationPath $destination
 $scriptPath = "$destination\AzureMigrateInstaller.ps1"
-$inputCommands = @(
-    "3",  # Desired scenario
-    "1",  # Another choice
-    "1",  # Another choice
-    "Y"   # Proceed confirmation
-)
+
+$inputCommands = @("${var.input_command_1}", "${var.input_command_2}", "${var.input_command_3}", "${var.input_command_4}")
 $inputCommands | Out-File -FilePath "$destination\input.txt" -Encoding ASCII
 $process = Start-Process -FilePath "powershell.exe" -ArgumentList "-NoExit", "-File", "$scriptPath" -PassThru  -RedirectStandardInput "$destination\input.txt"
 </powershell>
@@ -68,7 +65,10 @@ $process = Start-Process -FilePath "powershell.exe" -ArgumentList "-NoExit", "-F
 
 
   root_block_device {
-    volume_size = 80
+    volume_size = var.volume
+  }
+  tags = {
+    Name = var.instance_name
   }
 }
 
@@ -76,7 +76,7 @@ resource "aws_subnet" "example_subnet" {
   depends_on        = [aws_vpc.example_vpc]
   vpc_id            = aws_vpc.example_vpc.id
   cidr_block        = "10.0.1.0/24"
-  availability_zone = "ap-south-1a"
+  availability_zone = var.availability
 }
 resource "aws_route_table" "example_route_table" {
   vpc_id = aws_vpc.example_vpc.id
